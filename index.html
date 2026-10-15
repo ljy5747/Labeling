@@ -354,9 +354,25 @@
     cell(join([yymmdd(d.pudDate), d.pudFeed.trim()]), 188, 518, 758, 563);
     cell(withUnit(d.head, 'mm'), 1007, 518, 1412, 563);
     const rows = [[566,609],[612,656],[659,705],[708,754],[756,803]];
+    // 1st~5th: 왼쪽 정렬 + 항목별 열 맞춤 (날짜 / 먹이 / 용량 / 체중)
+    const feedCols = rows.map((_, i) => [yymmdd(d[`fd${i}`]), d[`ff${i}`].trim(), d[`fv${i}`].trim(), withUnit(d[`fw${i}`], 'g')]);
+    const PAD = 56, GAP = 44, X0 = 188, X1 = 1412;
+    let fs = 34, colW;
+    const measureCols = () => {
+      ctx.font = `700 ${fs}px ${SERIF}`;
+      colW = [0,1,2,3].map(c => Math.max(0, ...feedCols.map(r => r[c] ? ctx.measureText(r[c]).width : 0)));
+      const used = colW.filter(w => w > 0);
+      return used.reduce((a, b) => a + b, 0) + GAP * Math.max(0, used.length - 1);
+    };
+    while(measureCols() > (X1 - X0) - PAD * 2 && fs > 16) fs--;
+    ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     rows.forEach(([y0,y1], i) => {
-      cell(join([yymmdd(d[`fd${i}`]), d[`ff${i}`].trim(), d[`fv${i}`].trim(), withUnit(d[`fw${i}`], 'g')]),
-        188, y0, 1412, y1);
+      let x = X0 + PAD;
+      feedCols[i].forEach((t, c) => {
+        if(!colW[c]) return;
+        if(t) ctx.fillText(t, x, (y0 + y1) / 2 + 2);
+        x += colW[c] + GAP;
+      });
     });
     cell(join([yymmdd(d.pupaDate), withUnit(d.pupaW, 'g')]), 188, 806, 758, 854);
     cell(join([yymmdd(d.adultDate), withUnit(d.adult, 'mm')]), 1007, 806, 1412, 854);
