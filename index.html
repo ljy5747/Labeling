@@ -146,16 +146,14 @@
     <div class="card">
       <h2>Breeding Data</h2>
       <div class="row c2">
-        <div class="f"><span style="font-size:12px;color:var(--muted)">푸딩</span>
-          <div class="seg" id="puddingSeg">
-            <button type="button" data-v="O">O</button>
-            <button type="button" data-v="X">X</button>
-          </div>
-        </div>
+        <label class="f">푸딩 날짜 <input type="date" id="pudDate"></label>
+        <label class="f">푸딩 먹이원 <input type="text" id="pudFeed" list="feedList" autocomplete="off" placeholder="발효톱밥"></label>
+      </div>
+      <div class="row c2">
         <label class="f">두폭 <span class="unit" data-u="mm"><input type="text" id="head" inputmode="decimal" placeholder="14.1"></span></label>
       </div>
       <div id="feeds"></div>
-      <div class="warn" id="dateWarn">날짜 순서가 맞지 않아요. 앞 차수보다 이른 날짜가 있습니다.</div>
+      <div class="warn" id="dateWarn">날짜 순서가 맞지 않아요. 푸딩 → 교체 → 용화 → 우화 순서보다 이른 날짜가 있습니다.</div>
     </div>
 
     <div class="card">
@@ -164,7 +162,8 @@
         <label class="f">용화 날짜 <input type="date" id="pupaDate"></label>
         <label class="f">용화 체중 <span class="unit" data-u="g"><input type="text" id="pupaW" inputmode="decimal" placeholder="30.2"></span></label>
       </div>
-      <div class="row">
+      <div class="row c2">
+        <label class="f">우화 날짜 <input type="date" id="adultDate"></label>
         <label class="f">우화 크기 <span class="unit" data-u="mm"><input type="text" id="adult" inputmode="decimal" placeholder="90.5"></span></label>
       </div>
     </div>
@@ -204,7 +203,7 @@
   tpl.src = 'template.png';
 
   const $ = id => document.getElementById(id);
-  const textIds = ['no','line','gen','mSize','mLine','fSize','fLine','head','pupaDate','pupaW','adult','breeder'];
+  const textIds = ['no','line','gen','mSize','mLine','fSize','fLine','pudDate','pudFeed','head','pupaDate','pupaW','adultDate','adult','breeder'];
 
   // 교체 기록 1st~5th 입력칸 생성
   const feedsEl = $('feeds');
@@ -223,11 +222,11 @@
     textIds.push(`fd${i}`,`ff${i}`,`fv${i}`,`fw${i}`);
   });
 
-  const state = { sex:'', pudding:'' };
+  const state = { sex:'' };
 
   // ---------- 상태 저장/불러오기 ----------
   function collect(){
-    const o = { sex:state.sex, pudding:state.pudding };
+    const o = { sex:state.sex };
     textIds.forEach(id => o[id] = $(id).value);
     return o;
   }
@@ -237,7 +236,7 @@
     try{ o = JSON.parse(localStorage.getItem(STORE) || 'null'); }catch(e){}
     if(!o) return;
     textIds.forEach(id => { if(o[id] != null) $(id).value = o[id]; });
-    state.sex = o.sex || ''; state.pudding = o.pudding || '';
+    state.sex = o.sex || '';
   }
 
   // ---------- 세그먼트 버튼 ----------
@@ -252,7 +251,6 @@
     el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   }
   bindSeg($('sexSeg'), 'sex');
-  bindSeg($('puddingSeg'), 'pudding');
 
   // ---------- 포맷 ----------
   const yymmdd = v => {
@@ -311,7 +309,7 @@
     cell(d.fLine, 480, 391, 1412, 449);
 
     // Breeding Data
-    cell(state.pudding, 188, 518, 758, 563);
+    cell(join([yymmdd(d.pudDate), d.pudFeed.trim()]), 188, 518, 758, 563);
     cell(withUnit(d.head, 'mm'), 1007, 518, 1412, 563);
     const rows = [[566,609],[612,656],[659,705],[708,754],[756,803]];
     rows.forEach(([y0,y1], i) => {
@@ -319,14 +317,14 @@
         188, y0, 1412, y1);
     });
     cell(join([yymmdd(d.pupaDate), withUnit(d.pupaW, 'g')]), 188, 806, 758, 854);
-    cell(withUnit(d.adult, 'mm'), 1007, 806, 1412, 854);
+    cell(join([yymmdd(d.adultDate), withUnit(d.adult, 'mm')]), 1007, 806, 1412, 854);
 
     // Breeder
     if(d.breeder) cell(d.breeder.trim(), 250, 880, 1192, 936, 40, 700);
   }
 
   function checkDates(d){
-    const ds = [0,1,2,3,4].map(i => d[`fd${i}`]).concat([d.pupaDate]).filter(Boolean);
+    const ds = [d.pudDate].concat([0,1,2,3,4].map(i => d[`fd${i}`]), [d.pupaDate, d.adultDate]).filter(Boolean);
     let bad = false;
     for(let i = 1; i < ds.length; i++) if(ds[i] < ds[i-1]) bad = true;
     $('dateWarn').classList.toggle('show', bad);
@@ -345,7 +343,6 @@
 
   function update(){
     paintSeg($('sexSeg'), state.sex);
-    paintSeg($('puddingSeg'), state.pudding);
     const d = collect();
     draw(d);
     checkDates(d);
@@ -364,7 +361,7 @@
   $('resetBtn').addEventListener('click', () => {
     if(!confirm('입력한 내용을 모두 지울까요?')) return;
     textIds.forEach(id => $(id).value = '');
-    state.sex = ''; state.pudding = '';
+    state.sex = '';
     update();
   });
 
