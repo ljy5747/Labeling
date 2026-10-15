@@ -9,6 +9,6 @@
 
 ## 표기 규칙
 - 표 안 글자는 모두 가운데 정렬
-- 학명(Dorcus Hopei Binodulosus)은 템플릿에 고정
+- 학명(Dorcus Hopei Binodulosus)은 템플릿에 고정 (밑줄 없음)
 - 푸딩은 O / X
 - 날짜는 `YY.MM.DD` (예: 26.08.08)
