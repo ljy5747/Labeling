@@ -114,11 +114,6 @@
   <section class="form">
     <div class="card">
       <h2>기본 정보</h2>
-      <div class="row">
-        <label class="f">학명
-          <input type="text" id="species" list="speciesList" autocomplete="off" placeholder="Dorcus Hopei Binodulosus">
-        </label>
-      </div>
       <div class="row c2">
         <label class="f">No.
           <input type="text" id="no" inputmode="numeric" autocomplete="off" placeholder="13">
@@ -187,15 +182,6 @@
   </section>
 </main>
 
-<datalist id="speciesList">
-  <option value="Dorcus Hopei Binodulosus">
-  <option value="Dorcus Hopei Hopei">
-  <option value="Dorcus Antaeus">
-  <option value="Dorcus Grandis">
-  <option value="Dorcus Curvidens">
-  <option value="Dorcus Titanus">
-  <option value="Prosopocoilus Giraffa">
-</datalist>
 <datalist id="genList">
   <option value="WD"><option value="WF1"><option value="WF2"><option value="CB">
   <option value="CBF1"><option value="CBF2"><option value="CBF3">
@@ -218,7 +204,7 @@
   tpl.src = 'template.png';
 
   const $ = id => document.getElementById(id);
-  const textIds = ['species','no','line','gen','mSize','mLine','fSize','fLine','head','pupaDate','pupaW','adult','breeder'];
+  const textIds = ['no','line','gen','mSize','mLine','fSize','fLine','head','pupaDate','pupaW','adult','breeder'];
 
   // 교체 기록 1st~5th 입력칸 생성
   const feedsEl = $('feeds');
@@ -299,25 +285,6 @@
     ctx.clearRect(0, 0, cv.width, cv.height);
     if(tpl.complete && tpl.naturalWidth) ctx.drawImage(tpl, 0, 0, cv.width, cv.height);
 
-    // 학명 (흰 글씨, 왼쪽 정렬, 단어마다 줄바꿈 / 최대 3줄)
-    const sp = (d.species || '').trim();
-    if(sp){
-      let words = sp.split(/\s+/);
-      if(words.length > 3) words = [words[0], words[1], words.slice(2).join(' ')];
-      const lines = words;
-      const maxW = 262;
-      let size = 46;
-      ctx.font = `700 ${size}px ${SERIF}`;
-      const widest = () => Math.max(...lines.map(l => ctx.measureText(l).width));
-      while(widest() > maxW && size > 20){ size--; ctx.font = `700 ${size}px ${SERIF}`; }
-      const lh = size * 0.98;
-      const bottom = 222;
-      const top = bottom - lh * (lines.length - 1);
-      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      lines.forEach((l, i) => ctx.fillText(l, 818, top + lh * i));
-      const uw = ctx.measureText(lines[lines.length - 1]).width;
-      ctx.fillRect(818, bottom + 12, uw, 3);
-    }
 
     // No.
     if(d.no) cell(d.no.trim(), 1326, 82, 1486, 134, 40, 500);
