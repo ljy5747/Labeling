@@ -104,7 +104,7 @@
 
 <main class="wrap">
   <section class="preview" id="preview">
-    <canvas id="cv" width="1524" height="1032" aria-label="라벨 미리보기"></canvas>
+    <canvas id="cv" width="1444" height="1032" aria-label="라벨 미리보기"></canvas>
     <div class="pbar">
       <button class="primary" id="saveBtn">이미지 저장</button>
       <button class="toggle ghost" id="toggleBtn">접기</button>
@@ -287,35 +287,35 @@
 
 
     // No.
-    if(d.no) cell(d.no.trim(), 1326, 82, 1486, 134, 40, 500);
+    if(d.no) cell(d.no.trim(), 1246, 82, 1406, 134, 40, 500);
 
     // 성별 체크
     ctx.font = `700 40px ${SERIF}`;
     ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if(state.sex === 'm') ctx.fillText('V', 1302.5, 192);
-    if(state.sex === 'f') ctx.fillText('V', 1451.5, 192);
+    if(state.sex === 'm') ctx.fillText('V', 1222.5, 192);
+    if(state.sex === 'f') ctx.fillText('V', 1371.5, 192);
 
     // 종충
     cell(d.line, 269, 283, 758, 331);
-    cell(d.gen, 897, 283, 1492, 331);
+    cell(d.gen, 897, 283, 1412, 331);
     cell(withUnit(d.mSize, 'mm'), 269, 334, 477, 388);
-    cell(d.mLine, 480, 334, 1492, 388);
+    cell(d.mLine, 480, 334, 1412, 388);
     cell(withUnit(d.fSize, 'mm'), 269, 391, 477, 449);
-    cell(d.fLine, 480, 391, 1492, 449);
+    cell(d.fLine, 480, 391, 1412, 449);
 
     // Breeding Data
     cell(state.pudding, 188, 518, 758, 563);
-    cell(withUnit(d.head, 'mm'), 1007, 518, 1492, 563);
+    cell(withUnit(d.head, 'mm'), 1007, 518, 1412, 563);
     const rows = [[566,609],[612,656],[659,705],[708,754],[756,803]];
     rows.forEach(([y0,y1], i) => {
       cell(join([yymmdd(d[`fd${i}`]), d[`ff${i}`].trim(), d[`fv${i}`].trim(), withUnit(d[`fw${i}`], 'g')]),
-        188, y0, 1492, y1);
+        188, y0, 1412, y1);
     });
     cell(join([yymmdd(d.pupaDate), withUnit(d.pupaW, 'g')]), 188, 806, 758, 854);
-    cell(withUnit(d.adult, 'mm'), 1007, 806, 1492, 854);
+    cell(withUnit(d.adult, 'mm'), 1007, 806, 1412, 854);
 
     // Breeder
-    if(d.breeder) cell(d.breeder.trim(), 250, 880, 1272, 936, 40, 500);
+    if(d.breeder) cell(d.breeder.trim(), 250, 880, 1192, 936, 40, 500);
   }
 
   function checkDates(d){
