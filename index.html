@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>국균연구소 라벨 메이커</title>
+<meta name="description" content="국균연구소 사슴벌레 사육 라벨을 입력하고 이미지로 저장합니다.">
+<meta name="theme-color" content="#111111">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#111; --paper:#fafaf7; --line:#d9d6cf; --muted:#7a766e;
+    --gold:#9c7a3c; --warn:#b4472e; --field:#fff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:"Noto Serif KR", serif; font-weight:500;
+    -webkit-text-size-adjust:100%;
+  }
+  header.top{
+    background:var(--ink); color:#fff; padding:14px 16px;
+    display:flex; align-items:baseline; gap:10px; justify-content:space-between;
+  }
+  header.top h1{margin:0; font-size:20px; font-weight:900; letter-spacing:.04em}
+  header.top span{font-size:12px; color:#c9b68e; letter-spacing:.12em}
+
+  .wrap{max-width:1280px; margin:0 auto; padding:16px;
+    display:grid; grid-template-columns:minmax(0,1fr); gap:20px}
+  @media (min-width:960px){
+    .wrap{grid-template-columns:minmax(0,440px) minmax(0,1fr); align-items:start}
+    .preview{order:2; position:sticky; top:16px}
+    .form{order:1}
+  }
+
+  /* preview */
+  .preview{background:var(--paper); z-index:5}
+  @media (max-width:959px){
+    .preview{position:sticky; top:0; margin:0 -16px; padding:10px 16px 12px;
+      border-bottom:1px solid var(--line)}
+    .preview.collapsed canvas{display:none}
+  }
+  .preview canvas{width:100%; height:auto; display:block; border-radius:6px;
+    box-shadow:0 4px 18px rgba(0,0,0,.12)}
+  .pbar{display:flex; gap:8px; margin-top:10px}
+  .pbar button{flex:1}
+  .toggle{display:none}
+  @media (max-width:959px){ .toggle{display:inline-block; flex:0 0 auto} }
+
+  button{
+    font:inherit; font-weight:700; font-size:15px; border-radius:8px; cursor:pointer;
+    padding:12px 14px; border:1px solid var(--ink); background:#fff; color:var(--ink);
+  }
+  button.primary{background:var(--ink); color:#fff}
+  button.primary:active{background:#333}
+  button.ghost{border-color:var(--line); color:var(--muted)}
+
+  /* form */
+  .card{background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px}
+  .card h2{margin:0 0 12px; font-size:15px; font-weight:900; letter-spacing:.06em;
+    display:flex; align-items:center; gap:8px}
+  .card h2::before{content:""; width:4px; height:15px; background:var(--gold); display:inline-block}
+  .row{display:grid; gap:10px; margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  .c2{grid-template-columns:1fr 1fr}
+  .c3{grid-template-columns:1fr 1fr 1fr}
+  .c-size{grid-template-columns:110px 1fr}
+  label.f{display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); min-width:0}
+  input[type=text],input[type=date]{
+    font:inherit; font-size:16px; color:var(--ink); background:var(--field);
+    border:1px solid var(--line); border-radius:7px; padding:10px; width:100%; min-width:0;
+    -webkit-appearance:none; appearance:none; min-height:44px;
+  }
+  input:focus{outline:2px solid var(--gold); outline-offset:-1px; border-color:var(--gold)}
+  .unit{position:relative}
+  .unit input{padding-right:40px}
+  .unit::after{content:attr(data-u); position:absolute; right:11px; top:50%;
+    transform:translateY(-50%); font-size:13px; color:var(--muted); pointer-events:none}
+
+  .seg{display:flex; border:1px solid var(--ink); border-radius:8px; overflow:hidden}
+  .seg button{flex:1; border:0; border-radius:0; padding:8px 0; font-size:22px; min-height:44px}
+  .seg button+button{border-left:1px solid var(--ink)}
+  .seg button.on{background:var(--ink); color:#fff}
+
+  .feed{border-top:1px dashed var(--line); padding-top:12px; margin-top:12px}
+  .feed:first-of-type{border-top:0; padding-top:0; margin-top:0}
+  .feed .tag{font-weight:900; font-size:14px; margin-bottom:6px; display:flex; justify-content:space-between}
+  .feed .tag button{padding:2px 8px; font-size:12px; border-color:var(--line); color:var(--muted); font-weight:500}
+  .feed-grid{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:8px}
+  @media (max-width:520px){ .feed-grid{grid-template-columns:1fr 1fr} }
+
+  .warn{color:var(--warn); font-size:12px; margin-top:6px; display:none}
+  .warn.show{display:block}
+  .foot{display:flex; gap:10px}
+  .foot button{flex:1}
+  .note{font-size:12px; color:var(--muted); text-align:center; margin:4px 0 24px}
+</style>
+</head>
+<body>
+<header class="top"><h1>國菌研究所 라벨</h1><span>LABEL MAKER</span></header>
+
+<main class="wrap">
+  <section class="preview" id="preview">
+    <canvas id="cv" width="1524" height="1032" aria-label="라벨 미리보기"></canvas>
+    <div class="pbar">
+      <button class="primary" id="saveBtn">이미지 저장</button>
+      <button class="toggle ghost" id="toggleBtn">접기</button>
+    </div>
+  </section>
+
+  <section class="form">
+    <div class="card">
+      <h2>기본 정보</h2>
+      <div class="row">
+        <label class="f">학명
+          <input type="text" id="species" list="speciesList" autocomplete="off" placeholder="Dorcus Hopei Binodulosus">
+        </label>
+      </div>
+      <div class="row c2">
+        <label class="f">No.
+          <input type="text" id="no" inputmode="numeric" autocomplete="off" placeholder="13">
+        </label>
+        <div class="f"><span style="font-size:12px;color:var(--muted)">성별</span>
+          <div class="seg" id="sexSeg">
+            <button type="button" data-v="m">♂</button>
+            <button type="button" data-v="f">♀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>종충</h2>
+      <div class="row c2">
+        <label class="f">라인명 <input type="text" id="line" autocomplete="off" placeholder="꿀동 A"></label>
+        <label class="f">누대수 <input type="text" id="gen" list="genList" autocomplete="off" placeholder="CBF1"></label>
+      </div>
+      <div class="row c-size">
+        <label class="f">♂ 크기 <span class="unit" data-u="mm"><input type="text" id="mSize" inputmode="decimal" placeholder="86.7"></span></label>
+        <label class="f">♂ 혈통 <input type="text" id="mLine" autocomplete="off" placeholder="한테란 H-1"></label>
+      </div>
+      <div class="row c-size">
+        <label class="f">♀ 크기 <span class="unit" data-u="mm"><input type="text" id="fSize" inputmode="decimal" placeholder="56.7"></span></label>
+        <label class="f">♀ 혈통 <input type="text" id="fLine" autocomplete="off" placeholder="포에버 S563"></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Breeding Data</h2>
+      <div class="row c2">
+        <div class="f"><span style="font-size:12px;color:var(--muted)">푸딩</span>
+          <div class="seg" id="puddingSeg">
+            <button type="button" data-v="O">O</button>
+            <button type="button" data-v="X">X</button>
+          </div>
+        </div>
+        <label class="f">두폭 <span class="unit" data-u="mm"><input type="text" id="head" inputmode="decimal" placeholder="14.1"></span></label>
+      </div>
+      <div id="feeds"></div>
+      <div class="warn" id="dateWarn">날짜 순서가 맞지 않아요. 앞 차수보다 이른 날짜가 있습니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>용화 · 우화</h2>
+      <div class="row c2">
+        <label class="f">용화 날짜 <input type="date" id="pupaDate"></label>
+        <label class="f">용화 체중 <span class="unit" data-u="g"><input type="text" id="pupaW" inputmode="decimal" placeholder="30.2"></span></label>
+      </div>
+      <div class="row">
+        <label class="f">우화 크기 <span class="unit" data-u="mm"><input type="text" id="adult" inputmode="decimal" placeholder="90.5"></span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Breeder</h2>
+      <label class="f">브리더 <input type="text" id="breeder" autocomplete="nickname" placeholder="피눈물"></label>
+    </div>
+
+    <div class="foot">
+      <button class="ghost" id="resetBtn">전체 초기화</button>
+      <button class="primary" id="saveBtn2">이미지 저장</button>
+    </div>
+    <p class="note">입력 내용은 이 기기에 자동 저장됩니다.</p>
+  </section>
+</main>
+
+<datalist id="speciesList">
+  <option value="Dorcus Hopei Binodulosus">
+  <option value="Dorcus Hopei Hopei">
+  <option value="Dorcus Antaeus">
+  <option value="Dorcus Grandis">
+  <option value="Dorcus Curvidens">
+  <option value="Dorcus Titanus">
+  <option value="Prosopocoilus Giraffa">
+</datalist>
+<datalist id="genList">
+  <option value="WD"><option value="WF1"><option value="WF2"><option value="CB">
+  <option value="CBF1"><option value="CBF2"><option value="CBF3">
+</datalist>
+<datalist id="feedList">
+  <option value="S8K"><option value="균사"><option value="발효톱밥">
+</datalist>
+<datalist id="volList">
+  <option value="500CC"><option value="800CC"><option value="1100CC"><option value="1500CC"><option value="2300CC"><option value="3000CC">
+</datalist>
+
+<script>
+(() => {
+  const STORE = 'kgl-label-v1';
+  const ORD = ['1st','2nd','3rd','4th','5th'];
+  const SERIF = '"Noto Serif KR", serif';
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const tpl = new Image();
+  tpl.src = 'template.png';
+
+  const $ = id => document.getElementById(id);
+  const textIds = ['species','no','line','gen','mSize','mLine','fSize','fLine','head','pupaDate','pupaW','adult','breeder'];
+
+  // 교체 기록 1st~5th 입력칸 생성
+  const feedsEl = $('feeds');
+  ORD.forEach((o, i) => {
+    const d = document.createElement('div');
+    d.className = 'feed';
+    d.innerHTML = `
+      <div class="tag">${o}<button type="button" data-clear="${i}">비우기</button></div>
+      <div class="feed-grid">
+        <label class="f">날짜 <input type="date" id="fd${i}"></label>
+        <label class="f">먹이 <input type="text" id="ff${i}" list="feedList" autocomplete="off" placeholder="S8K"></label>
+        <label class="f">용량 <input type="text" id="fv${i}" list="volList" autocomplete="off" placeholder="1500CC"></label>
+        <label class="f">체중 <span class="unit" data-u="g"><input type="text" id="fw${i}" inputmode="decimal" placeholder="${i===0?'':'29.2'}"></span></label>
+      </div>`;
+    feedsEl.appendChild(d);
+    textIds.push(`fd${i}`,`ff${i}`,`fv${i}`,`fw${i}`);
+  });
+
+  const state = { sex:'', pudding:'' };
+
+  // ---------- 상태 저장/불러오기 ----------
+  function collect(){
+    const o = { sex:state.sex, pudding:state.pudding };
+    textIds.forEach(id => o[id] = $(id).value);
+    return o;
+  }
+  function save(){ try{ localStorage.setItem(STORE, JSON.stringify(collect())); }catch(e){} }
+  function load(){
+    let o = null;
+    try{ o = JSON.parse(localStorage.getItem(STORE) || 'null'); }catch(e){}
+    if(!o) return;
+    textIds.forEach(id => { if(o[id] != null) $(id).value = o[id]; });
+    state.sex = o.sex || ''; state.pudding = o.pudding || '';
+  }
+
+  // ---------- 세그먼트 버튼 ----------
+  function bindSeg(el, key){
+    el.addEventListener('click', e => {
+      const b = e.target.closest('button'); if(!b) return;
+      state[key] = state[key] === b.dataset.v ? '' : b.dataset.v;
+      update();
+    });
+  }
+  function paintSeg(el, v){
+    el.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  }
+  bindSeg($('sexSeg'), 'sex');
+  bindSeg($('puddingSeg'), 'pudding');
+
+  // ---------- 포맷 ----------
+  const yymmdd = v => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+    return m ? `${m[1].slice(2)}.${m[2]}.${m[3]}` : '';
+  };
+  const withUnit = (v, u) => (v = (v||'').trim()) ? `${v} ${u}` : '';
+  const join = arr => arr.filter(Boolean).join('   ');
+
+  // ---------- 캔버스 그리기 ----------
+  function fitFont(text, maxW, size, weight){
+    let s = size;
+    ctx.font = `${weight} ${s}px ${SERIF}`;
+    while(ctx.measureText(text).width > maxW && s > 14){
+      s -= 1; ctx.font = `${weight} ${s}px ${SERIF}`;
+    }
+    return s;
+  }
+  // 셀 가운데 정렬 (x0~x1, y0~y1)
+  function cell(text, x0, y0, x1, y1, size=34, weight=500){
+    if(!text) return;
+    fitFont(text, (x1 - x0) - 24, size, weight);
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, (x0 + x1) / 2, (y0 + y1) / 2 + 2);
+  }
+
+  function draw(d){
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if(tpl.complete && tpl.naturalWidth) ctx.drawImage(tpl, 0, 0, cv.width, cv.height);
+
+    // 학명 (흰 글씨, 왼쪽 정렬, 단어마다 줄바꿈 / 최대 3줄)
+    const sp = (d.species || '').trim();
+    if(sp){
+      let words = sp.split(/\s+/);
+      if(words.length > 3) words = [words[0], words[1], words.slice(2).join(' ')];
+      const lines = words;
+      const maxW = 262;
+      let size = 46;
+      ctx.font = `700 ${size}px ${SERIF}`;
+      const widest = () => Math.max(...lines.map(l => ctx.measureText(l).width));
+      while(widest() > maxW && size > 20){ size--; ctx.font = `700 ${size}px ${SERIF}`; }
+      const lh = size * 0.98;
+      const bottom = 222;
+      const top = bottom - lh * (lines.length - 1);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      lines.forEach((l, i) => ctx.fillText(l, 818, top + lh * i));
+      const uw = ctx.measureText(lines[lines.length - 1]).width;
+      ctx.fillRect(818, bottom + 12, uw, 3);
+    }
+
+    // No.
+    if(d.no) cell(d.no.trim(), 1326, 82, 1486, 134, 40, 500);
+
+    // 성별 체크
+    ctx.font = `700 40px ${SERIF}`;
+    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if(state.sex === 'm') ctx.fillText('V', 1302.5, 192);
+    if(state.sex === 'f') ctx.fillText('V', 1451.5, 192);
+
+    // 종충
+    cell(d.line, 269, 283, 758, 331);
+    cell(d.gen, 897, 283, 1492, 331);
+    cell(withUnit(d.mSize, 'mm'), 269, 334, 477, 388);
+    cell(d.mLine, 480, 334, 1492, 388);
+    cell(withUnit(d.fSize, 'mm'), 269, 391, 477, 449);
+    cell(d.fLine, 480, 391, 1492, 449);
+
+    // Breeding Data
+    cell(state.pudding, 188, 518, 758, 563);
+    cell(withUnit(d.head, 'mm'), 1007, 518, 1492, 563);
+    const rows = [[566,609],[612,656],[659,705],[708,754],[756,803]];
+    rows.forEach(([y0,y1], i) => {
+      cell(join([yymmdd(d[`fd${i}`]), d[`ff${i}`].trim(), d[`fv${i}`].trim(), withUnit(d[`fw${i}`], 'g')]),
+        188, y0, 1492, y1);
+    });
+    cell(join([yymmdd(d.pupaDate), withUnit(d.pupaW, 'g')]), 188, 806, 758, 854);
+    cell(withUnit(d.adult, 'mm'), 1007, 806, 1492, 854);
+
+    // Breeder
+    if(d.breeder) cell(d.breeder.trim(), 250, 880, 1272, 936, 40, 500);
+  }
+
+  function checkDates(d){
+    const ds = [0,1,2,3,4].map(i => d[`fd${i}`]).concat([d.pupaDate]).filter(Boolean);
+    let bad = false;
+    for(let i = 1; i < ds.length; i++) if(ds[i] < ds[i-1]) bad = true;
+    $('dateWarn').classList.toggle('show', bad);
+  }
+
+  // 필요한 글자의 웹폰트 조각을 먼저 받아온 뒤 다시 그림
+  let fontSeq = 0;
+  function ensureFonts(d){
+    const text = Object.values(d).join('') + '0123456789.mmgCCVOX ';
+    const seq = ++fontSeq;
+    Promise.all([
+      document.fonts.load(`500 34px ${SERIF}`, text),
+      document.fonts.load(`700 46px ${SERIF}`, text),
+    ]).then(() => { if(seq === fontSeq) draw(collect()); }).catch(() => {});
+  }
+
+  function update(){
+    paintSeg($('sexSeg'), state.sex);
+    paintSeg($('puddingSeg'), state.pudding);
+    const d = collect();
+    draw(d);
+    checkDates(d);
+    save();
+    ensureFonts(d);
+  }
+
+  document.addEventListener('input', e => { if(e.target.matches('input')) update(); });
+  feedsEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-clear]'); if(!b) return;
+    const i = b.dataset.clear;
+    ['fd','ff','fv','fw'].forEach(p => $(p + i).value = '');
+    update();
+  });
+
+  $('resetBtn').addEventListener('click', () => {
+    if(!confirm('입력한 내용을 모두 지울까요?')) return;
+    textIds.forEach(id => $(id).value = '');
+    state.sex = ''; state.pudding = '';
+    update();
+  });
+
+  $('toggleBtn').addEventListener('click', () => {
+    const p = $('preview');
+    p.classList.toggle('collapsed');
+    $('toggleBtn').textContent = p.classList.contains('collapsed') ? '펼치기' : '접기';
+  });
+
+  // ---------- 이미지 저장 ----------
+  function fileName(){
+    const d = collect();
+    const parts = ['KGL', (d.line || '').trim(), d.no ? `No${d.no.trim()}` : ''].filter(Boolean);
+    return parts.join('_').replace(/[\\/:*?"<>|\s]+/g, '_') + '.png';
+  }
+  async function saveImage(){
+    const d = collect();
+    try{ await Promise.all([document.fonts.load(`500 34px ${SERIF}`, Object.values(d).join('')),
+                            document.fonts.load(`700 46px ${SERIF}`, Object.values(d).join(''))]); }catch(e){}
+    draw(d);
+    const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+    if(!blob) return alert('이미지를 만들지 못했어요. 다시 시도해 주세요.');
+    const name = fileName();
+    const file = new File([blob], name, { type:'image/png' });
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if(mobile && navigator.canShare && navigator.canShare({ files:[file] })){
+      try{ await navigator.share({ files:[file], title:name }); return; }
+      catch(e){ if(e.name === 'AbortError') return; }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  $('saveBtn').addEventListener('click', saveImage);
+  $('saveBtn2').addEventListener('click', saveImage);
+
+  load();
+  tpl.onload = update;
+  if(tpl.complete) update();
+  document.fonts.ready.then(() => draw(collect()));
+})();
+</script>
+</body>
+</html>
