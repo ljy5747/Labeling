@@ -272,7 +272,7 @@
     return s;
   }
   // 셀 가운데 정렬 (x0~x1, y0~y1)
-  function cell(text, x0, y0, x1, y1, size=34, weight=500){
+  function cell(text, x0, y0, x1, y1, size=34, weight=700){
     if(!text) return;
     fitFont(text, (x1 - x0) - 24, size, weight);
     ctx.fillStyle = '#000';
@@ -287,13 +287,20 @@
 
 
     // No.
-    if(d.no) cell(d.no.trim(), 1246, 82, 1406, 134, 40, 500);
+    if(d.no) cell(d.no.trim(), 1246, 82, 1406, 134, 40, 700);
 
     // 성별 체크
-    ctx.font = `700 40px ${SERIF}`;
-    ctx.fillStyle = '#000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if(state.sex === 'm') ctx.fillText('V', 1222.5, 192);
-    if(state.sex === 'f') ctx.fillText('V', 1371.5, 192);
+    // 체크 표시: 글자 실제 외곽 기준으로 칸 정중앙에 배치
+    const checkAt = (cx, cy) => {
+      ctx.font = `700 34px ${SERIF}`;
+      ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      const m = ctx.measureText('V');
+      const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+      const h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+      ctx.fillText('V', cx - w / 2 + m.actualBoundingBoxLeft, cy - h / 2 + m.actualBoundingBoxAscent);
+    };
+    if(state.sex === 'm') checkAt(1222.5, 193.5);
+    if(state.sex === 'f') checkAt(1371.5, 193.5);
 
     // 종충
     cell(d.line, 269, 283, 758, 331);
@@ -315,7 +322,7 @@
     cell(withUnit(d.adult, 'mm'), 1007, 806, 1412, 854);
 
     // Breeder
-    if(d.breeder) cell(d.breeder.trim(), 250, 880, 1192, 936, 40, 500);
+    if(d.breeder) cell(d.breeder.trim(), 250, 880, 1192, 936, 40, 700);
   }
 
   function checkDates(d){
@@ -331,7 +338,7 @@
     const text = Object.values(d).join('') + '0123456789.mmgCCVOX ';
     const seq = ++fontSeq;
     Promise.all([
-      document.fonts.load(`500 34px ${SERIF}`, text),
+      document.fonts.load(`700 34px ${SERIF}`, text),
       document.fonts.load(`700 46px ${SERIF}`, text),
     ]).then(() => { if(seq === fontSeq) draw(collect()); }).catch(() => {});
   }
@@ -375,7 +382,7 @@
   }
   async function saveImage(){
     const d = collect();
-    try{ await Promise.all([document.fonts.load(`500 34px ${SERIF}`, Object.values(d).join('')),
+    try{ await Promise.all([document.fonts.load(`700 34px ${SERIF}`, Object.values(d).join('')),
                             document.fonts.load(`700 46px ${SERIF}`, Object.values(d).join(''))]); }catch(e){}
     draw(d);
     const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
