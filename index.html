@@ -97,6 +97,35 @@
   .foot{display:flex; gap:10px}
   .foot button{flex:1}
   .note{font-size:12px; color:var(--muted); text-align:center; margin:4px 0 24px}
+
+  /* BeetleLog 가져오기 */
+  .import{width:100%; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px;
+    background:#fff; border:1px solid var(--gold); color:var(--ink)}
+  .import b{color:var(--gold)}
+  .sheet-bg{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:50; display:none}
+  .sheet-bg.open{display:block}
+  .sheet{position:fixed; left:0; right:0; bottom:0; max-height:86vh; background:var(--paper);
+    border-radius:16px 16px 0 0; z-index:51; display:none; flex-direction:column;
+    padding:14px 16px calc(16px + env(safe-area-inset-bottom))}
+  .sheet.open{display:flex}
+  @media (min-width:700px){ .sheet{left:50%; right:auto; width:560px; transform:translateX(-50%); bottom:auto; top:6vh; border-radius:14px} }
+  .sheet-head{display:flex; align-items:center; gap:10px; margin-bottom:10px}
+  .sheet-head h3{margin:0; font-size:17px; font-weight:900; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .sheet-head button{padding:6px 12px; font-size:13px}
+  .sheet-sub{font-size:12px; color:var(--muted); margin-bottom:10px; display:flex; justify-content:space-between; gap:8px}
+  .sheet-sub a{color:var(--muted)}
+  .sheet input[type=search]{font:inherit; font-size:16px; width:100%; padding:10px; border:1px solid var(--line);
+    border-radius:8px; margin-bottom:10px; -webkit-appearance:none; appearance:none; background:#fff}
+  .sheet-list{overflow:auto; -webkit-overflow-scrolling:touch; flex:1; min-height:120px}
+  .item{display:block; width:100%; text-align:left; border:1px solid var(--line); background:#fff; border-radius:10px;
+    padding:12px; margin-bottom:8px; font-weight:500}
+  .item:active{background:#f3efe6}
+  .item .t{font-weight:900; font-size:15px; display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+  .item .s{font-size:12px; color:var(--muted); margin-top:3px}
+  .chip{font-size:11px; border:1px solid var(--line); border-radius:20px; padding:1px 7px; font-weight:700}
+  .chip.m{color:#2d5d9f; border-color:#2d5d9f55} .chip.f{color:#b0405e; border-color:#b0405e55}
+  .msg{text-align:center; color:var(--muted); font-size:14px; padding:28px 8px; line-height:1.6}
+  .msg button{margin-top:14px}
 </style>
 </head>
 <body>
@@ -112,6 +141,7 @@
   </section>
 
   <section class="form">
+    <button type="button" class="import" id="importBtn"><b>🪲</b> BeetleLog에서 가져오기</button>
     <div class="card">
       <h2>기본 정보</h2>
       <div class="row c2">
@@ -180,6 +210,18 @@
     <p class="note">입력 내용은 이 기기에 자동 저장됩니다.</p>
   </section>
 </main>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-head">
+    <button type="button" class="ghost" id="sheetBack" hidden>‹ 라인</button>
+    <h3 id="sheetTitle">BeetleLog에서 가져오기</h3>
+    <button type="button" class="ghost" id="sheetClose">닫기</button>
+  </div>
+  <div class="sheet-sub" id="sheetSub" hidden><span id="whoami"></span><a href="#" id="logoutLink">로그아웃</a></div>
+  <input type="search" id="sheetSearch" placeholder="검색" hidden>
+  <div class="sheet-list" id="sheetList"></div>
+</div>
 
 <datalist id="genList">
   <option value="WD"><option value="WF1"><option value="WF2"><option value="CB">
@@ -400,6 +442,209 @@
   }
   $('saveBtn').addEventListener('click', saveImage);
   $('saveBtn2').addEventListener('click', saveImage);
+
+  // ================= BeetleLog 가져오기 =================
+  const SB_URL = 'https://qybgsztoegkzqsdipili.supabase.co';
+  const SB_KEY = 'sb_publishable_IwNmQESmOgj-DHR0sxOIlw_4EKsa4wu';
+  const AUTH_STORE = 'kgl-label-auth';
+  const homeUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  let bl = null;          // 불러온 BeetleLog 데이터
+  let blEmail = '';
+  let view = 'lines';     // lines | inds
+  let curLine = null;
+
+  const getSession = () => { try{ return JSON.parse(localStorage.getItem(AUTH_STORE) || 'null'); }catch(e){ return null; } };
+  const setSession = s => { try{ s ? localStorage.setItem(AUTH_STORE, JSON.stringify(s)) : localStorage.removeItem(AUTH_STORE); }catch(e){} };
+
+  // 구글 로그인 후 돌아오면 주소의 토큰을 저장하고 주소 정리
+  function handleRedirect(){
+    const h = location.hash || '';
+    if(!h.includes('access_token')) return false;
+    const p = new URLSearchParams(h.slice(1));
+    const access = p.get('access_token');
+    if(!access) return false;
+    setSession({ access, refresh: p.get('refresh_token') || '', at: Date.now() });
+    history.replaceState(null, '', homeUrl());
+    return true;
+  }
+  function login(){
+    location.href = `${SB_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(homeUrl())}`;
+  }
+  async function refresh(s){
+    if(!s || !s.refresh) return null;
+    try{
+      const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method:'POST', headers:{ apikey:SB_KEY, 'Content-Type':'application/json' },
+        body: JSON.stringify({ refresh_token: s.refresh }) });
+      if(!r.ok) return null;
+      const j = await r.json();
+      if(!j.access_token) return null;
+      const n = { access:j.access_token, refresh:j.refresh_token || s.refresh, at:Date.now() };
+      setSession(n); return n;
+    }catch(e){ return null; }
+  }
+  async function validSession(){
+    let s = getSession();
+    if(!s) return null;
+    if(!s.at || Date.now() - s.at > 50*60*1000) s = await refresh(s) || s;
+    return s;
+  }
+  async function authed(url, s){
+    let r = await fetch(url, { headers:{ apikey:SB_KEY, Authorization:`Bearer ${s.access}` } });
+    if(r.status === 401){
+      const n = await refresh(s);
+      if(!n) throw Object.assign(new Error('login'), { login:true });
+      r = await fetch(url, { headers:{ apikey:SB_KEY, Authorization:`Bearer ${n.access}` } });
+    }
+    if(r.status === 401) throw Object.assign(new Error('login'), { login:true });
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  async function fetchBeetleLog(){
+    const s = await validSession();
+    if(!s) throw Object.assign(new Error('login'), { login:true });
+    const u = await authed(`${SB_URL}/auth/v1/user`, s);
+    if(!u || !u.email) throw Object.assign(new Error('login'), { login:true });
+    blEmail = u.email;
+    const s2 = getSession();
+    const rows = await authed(`${SB_URL}/rest/v1/beetlelog_data?user_key=eq.${encodeURIComponent('user:' + u.email)}` +
+      `&select=lines:data->lines,individuals:data->individuals,parents:data->parents`, s2);
+    const d = rows[0] || {};
+    return { lines: d.lines || [], individuals: d.individuals || [], parents: d.parents || [] };
+  }
+
+  // ---- 시트 UI ----
+  const sheet = $('sheet'), sheetBg = $('sheetBg'), list = $('sheetList'), search = $('sheetSearch');
+  function openSheet(){ sheet.classList.add('open'); sheetBg.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeSheet(){ sheet.classList.remove('open'); sheetBg.classList.remove('open'); document.body.style.overflow = ''; }
+  function msg(html){ list.innerHTML = `<div class="msg">${html}</div>`; }
+  function chrome(title, showBack, showSearch){
+    $('sheetTitle').textContent = title;
+    $('sheetBack').hidden = !showBack;
+    search.hidden = !showSearch;
+    $('sheetSub').hidden = !blEmail;
+    $('whoami').textContent = blEmail;
+  }
+
+  async function startImport(){
+    openSheet();
+    chrome('BeetleLog에서 가져오기', false, false);
+    if(bl){ showLines(); return; }
+    msg('불러오는 중…');
+    try{
+      bl = await fetchBeetleLog();
+      showLines();
+    }catch(e){
+      if(e.login){
+        setSession(null); blEmail = ''; chrome('BeetleLog에서 가져오기', false, false);
+        msg('BeetleLog에서 쓰는 구글 계정으로 로그인하면<br>라인과 유충 기록을 바로 불러올 수 있어요.<br><button class="primary" id="loginBtn">구글로 로그인</button>');
+        $('loginBtn').onclick = login;
+      }else{
+        msg('불러오지 못했어요. 잠시 후 다시 시도해 주세요.<br><button id="retryBtn">다시 시도</button>');
+        $('retryBtn').onclick = () => { bl = null; startImport(); };
+      }
+    }
+  }
+
+  const parentsById = () => Object.fromEntries((bl.parents || []).map(p => [p.id, p]));
+  const sexOf = v => /♂|수컷/.test(v || '') ? 'm' : /♀|암컷/.test(v || '') ? 'f' : '';
+  const isPud = r => !!(r && (r.pudding || /푸딩/.test(String(r.bottleSize || ''))));
+  const byDate = (a, b) => String(a.date || '').localeCompare(String(b.date || ''));
+
+  function showLines(){
+    view = 'lines'; curLine = null;
+    chrome('라인 선택', false, true);
+    search.placeholder = '라인명, 종, 누대 검색';
+    const q = search.value.trim().toLowerCase();
+    const counts = {};
+    (bl.individuals || []).forEach(i => counts[i.lineId] = (counts[i.lineId] || 0) + 1);
+    const lines = (bl.lines || []).filter(l => counts[l.id])
+      .filter(l => !q || [l.code, l.species, l.gen, l.origin].join(' ').toLowerCase().includes(q))
+      .sort((a, b) => String(b.setDate || b.year || '').localeCompare(String(a.setDate || a.year || '')) || String(a.code).localeCompare(String(b.code)));
+    if(!lines.length){ msg(q ? '검색 결과가 없어요.' : '유충이 등록된 라인이 없어요.'); return; }
+    list.innerHTML = lines.map(l => `
+      <button class="item" data-line="${esc(l.id)}">
+        <div class="t">${esc(l.code || '(이름 없음)')}${l.gen ? `<span class="chip">${esc(l.gen)}</span>` : ''}</div>
+        <div class="s">${esc([l.species, l.origin].filter(Boolean).join(' · '))} · 유충 ${counts[l.id]}마리</div>
+      </button>`).join('');
+  }
+
+  function showInds(lineId){
+    view = 'inds'; curLine = (bl.lines || []).find(l => l.id === lineId) || curLine;
+    chrome(curLine ? curLine.code : '유충 선택', true, true);
+    search.placeholder = '개체 번호 검색';
+    const q = search.value.trim().toLowerCase();
+    const inds = (bl.individuals || []).filter(i => i.lineId === curLine.id)
+      .filter(i => !q || String(i.code || '').toLowerCase().includes(q))
+      .sort((a, b) => String(a.code || '').localeCompare(String(b.code || ''), 'ko', { numeric:true }));
+    if(!inds.length){ msg('검색 결과가 없어요.'); return; }
+    list.innerHTML = inds.map(i => {
+      const recs = (i.bottleRecords || []).slice().sort(byDate);
+      const last = [...recs].reverse().find(r => r.weight);
+      const sx = sexOf(i.sex);
+      const info = [
+        last ? `최근 ${esc(last.weight)}g` : '',
+        recs.filter(r => !isPud(r)).length ? `${recs.filter(r => !isPud(r)).length}병` : '',
+        i.eclosion && i.eclosion.totalLength ? `우화 ${esc(i.eclosion.totalLength)}mm` : (i.pupation && i.pupation.pupaDate ? '용화' : ''),
+        i.status || '',
+      ].filter(Boolean).join(' · ');
+      return `<button class="item" data-ind="${esc(i.id)}">
+        <div class="t">${esc(i.code || '(번호 없음)')}${sx ? `<span class="chip ${sx}">${sx === 'm' ? '♂' : '♀'}</span>` : ''}</div>
+        <div class="s">${info || '기록 없음'}</div>
+      </button>`;
+    }).join('');
+  }
+
+  function fillFrom(ind){
+    const line = (bl.lines || []).find(l => l.id === ind.lineId) || {};
+    const P = parentsById();
+    const fa = P[line.fatherId] || {}, mo = P[line.motherId] || {};
+    const lineage = p => [p.line, p.code].filter(Boolean).join(' ');
+    const recs = (ind.bottleRecords || []).slice().sort(byDate);
+    const pud = recs.find(isPud);
+    const bottles = recs.filter(r => !isPud(r)).slice(0, 5);
+    const feedOf = r => (r.feedBrand || r.feedType || '').trim();
+    const ccOf = v => { const s = String(v || '').trim(); return !s ? '' : /^\d+(\.\d+)?$/.test(s) ? s + 'CC' : s.replace(/cc$/i, 'CC'); };
+    const head = [...recs].reverse().find(r => String(r.headWidth || '').trim());
+    const pu = ind.pupation || {}, ec = ind.eclosion || {};
+    const v = {
+      no: ind.code || '', line: line.code || '', gen: line.gen || '',
+      mSize: fa.totalLength || '', mLine: lineage(fa),
+      fSize: mo.totalLength || '', fLine: lineage(mo),
+      pudDate: pud ? pud.date || '' : '', pudFeed: pud ? feedOf(pud) : '',
+      head: head ? String(head.headWidth).trim() : '',
+      pupaDate: pu.pupaDate || '', pupaW: pu.pupaWeight || '',
+      adultDate: ec.date || '', adult: ec.totalLength || '',
+    };
+    for(let i = 0; i < 5; i++){
+      const r = bottles[i] || {};
+      v[`fd${i}`] = r.date || ''; v[`ff${i}`] = bottles[i] ? feedOf(r) : '';
+      v[`fv${i}`] = ccOf(r.bottleSize); v[`fw${i}`] = r.weight || '';
+    }
+    Object.entries(v).forEach(([k, val]) => { if($(k)) $(k).value = String(val); });
+    state.sex = sexOf(ind.sex);
+    update();
+    closeSheet();
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+
+  $('importBtn').addEventListener('click', startImport);
+  $('sheetClose').addEventListener('click', closeSheet);
+  sheetBg.addEventListener('click', closeSheet);
+  $('sheetBack').addEventListener('click', () => { search.value = ''; showLines(); });
+  search.addEventListener('input', () => view === 'lines' ? showLines() : showInds(curLine.id));
+  $('logoutLink').addEventListener('click', e => {
+    e.preventDefault(); setSession(null); bl = null; blEmail = ''; search.value = ''; startImport();
+  });
+  list.addEventListener('click', e => {
+    const l = e.target.closest('[data-line]');
+    if(l){ search.value = ''; showInds(l.dataset.line); list.scrollTop = 0; return; }
+    const i = e.target.closest('[data-ind]');
+    if(i){ const ind = (bl.individuals || []).find(x => x.id === i.dataset.ind); if(ind) fillFrom(ind); }
+  });
+  if(handleRedirect()) setTimeout(startImport, 0);
 
   load();
   tpl.onload = update;

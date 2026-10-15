@@ -12,3 +12,8 @@
 - 학명(Dorcus Hopei Binodulosus)은 템플릿에 고정 (밑줄 없음)
 - 푸딩은 날짜 + 먹이원
 - 날짜는 `YY.MM.DD` (예: 26.08.08)
+
+## BeetleLog에서 가져오기
+- 구글 로그인(BeetleLog와 같은 계정) → 라인 선택 → 유충 선택 → 라벨 칸 자동 입력
+- 본인 계정 데이터만 읽기 (Supabase RLS)
+- Supabase Auth Redirect URLs에 `https://ljy5747.github.io/Labeling/` 등록 필요
