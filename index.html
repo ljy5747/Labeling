@@ -245,13 +245,13 @@
   const JP_SERIF = '"Noto Serif JP", serif';
   const LANG_STORE = 'kgl-label-language';
   let labelLang = localStorage.getItem(LANG_STORE) === 'ja' ? 'ja' : 'ko';
-  $('labelLang').value = labelLang;
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
   const tpl = new Image();
   tpl.src = 'template.png';
 
   const $ = id => document.getElementById(id);
+  $('labelLang').value = labelLang;
   const textIds = ['no','line','gen','mSize','mLine','fSize','fLine','pudDate','pudFeed','head','pupaDate','pupaW','adultDate','adult','breeder'];
 
   // 교체 기록 1st~5th 입력칸 생성
