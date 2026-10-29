@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#111111">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&family=Noto+Serif+KR:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#111; --paper:#fafaf7; --line:#d9d6cf; --muted:#7a766e;
@@ -47,6 +47,8 @@
     box-shadow:0 4px 18px rgba(0,0,0,.12)}
   .pbar{display:flex; gap:8px; margin-top:10px}
   .pbar button{flex:1}
+  .langbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:10px;font-size:13px}
+  .langbar select{font:inherit;border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 10px;color:var(--ink)}
   .toggle{display:none}
   @media (max-width:959px){ .toggle{display:inline-block; flex:0 0 auto} }
 
@@ -134,6 +136,7 @@
 <main class="wrap">
   <section class="preview" id="preview">
     <canvas id="cv" width="1444" height="1032" aria-label="라벨 미리보기"></canvas>
+    <div class="langbar"><label for="labelLang">출력 라벨 언어</label><select id="labelLang" aria-label="출력 라벨 언어"><option value="ko">한국어</option><option value="ja">日本語</option></select></div>
     <div class="pbar">
       <button class="primary" id="saveBtn">이미지 저장</button>
       <button class="toggle ghost" id="toggleBtn">접기</button>
@@ -239,6 +242,10 @@
   const STORE = 'kgl-label-v1';
   const ORD = ['1st','2nd','3rd','4th','5th'];
   const SERIF = '"Noto Serif KR", serif';
+  const JP_SERIF = '"Noto Serif JP", serif';
+  const LANG_STORE = 'kgl-label-language';
+  let labelLang = localStorage.getItem(LANG_STORE) === 'ja' ? 'ja' : 'ko';
+  $('labelLang').value = labelLang;
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
   const tpl = new Image();
@@ -321,9 +328,40 @@
     ctx.fillText(text, (x0 + x1) / 2, (y0 + y1) / 2 + 2);
   }
 
+  // 원본 템플릿을 보존한 채 인쇄 문구만 교체한다.
+  function drawFixedLabels(){
+    // 학명 아래의 희미한 밑줄 제거 (두 언어 공통)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(814, 228, 265, 13);
+    if(labelLang !== 'ja') return;
+    function replaceCell(text, x0, y0, x1, y1, size=35){
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(x0+3, y0+3, x1-x0-6, y1-y0-6);
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `900 ${size}px ${JP_SERIF}`;
+      ctx.fillText(text, (x0+x1)/2, (y0+y1)/2+2, x1-x0-12);
+    }
+    replaceCell('ライン名', 123, 281, 266, 332, 30);
+    replaceCell('累代', 760, 281, 896, 332);
+    replaceCell('プリンカップ', 34, 518, 186, 565, 24);
+    replaceCell('頭幅', 760, 518, 1006, 565);
+    replaceCell('蛹化', 34, 804, 186, 854);
+    replaceCell('羽化', 760, 804, 1006, 854);
+    // 검은 세로 종충 칸
+    ctx.fillStyle = '#000';
+    ctx.fillRect(34, 282, 87, 167);
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `900 43px ${JP_SERIF}`;
+    ctx.fillText('種', 75, 342);
+    ctx.fillText('親', 75, 405);
+  }
+
   function draw(d){
     ctx.clearRect(0, 0, cv.width, cv.height);
     if(tpl.complete && tpl.naturalWidth) ctx.drawImage(tpl, 0, 0, cv.width, cv.height);
+    drawFixedLabels();
 
 
     // No.
@@ -396,6 +434,7 @@
     Promise.all([
       document.fonts.load(`700 34px ${SERIF}`, text),
       document.fonts.load(`700 46px ${SERIF}`, text),
+      ...(labelLang === 'ja' ? [document.fonts.load(`900 35px ${JP_SERIF}`, '種親ライン名累代プリンカップ頭幅蛹化羽化')] : []),
     ]).then(() => { if(seq === fontSeq) draw(collect()); }).catch(() => {});
   }
 
@@ -409,6 +448,11 @@
   }
 
   document.addEventListener('input', e => { if(e.target.matches('input')) update(); });
+  $('labelLang').addEventListener('change', e => {
+    labelLang = e.target.value === 'ja' ? 'ja' : 'ko';
+    localStorage.setItem(LANG_STORE, labelLang);
+    update();
+  });
   feedsEl.addEventListener('click', e => {
     const b = e.target.closest('[data-clear]'); if(!b) return;
     const i = b.dataset.clear;
@@ -432,13 +476,14 @@
   // ---------- 이미지 저장 ----------
   function fileName(){
     const d = collect();
-    const parts = ['KGL', (d.line || '').trim(), d.no ? `No${d.no.trim()}` : ''].filter(Boolean);
+    const parts = ['KGL', labelLang === 'ja' ? 'JP' : '', (d.line || '').trim(), d.no ? `No${d.no.trim()}` : ''].filter(Boolean);
     return parts.join('_').replace(/[\\/:*?"<>|\s]+/g, '_') + '.png';
   }
   async function saveImage(){
     const d = collect();
     try{ await Promise.all([document.fonts.load(`700 34px ${SERIF}`, Object.values(d).join('')),
-                            document.fonts.load(`700 46px ${SERIF}`, Object.values(d).join(''))]); }catch(e){}
+                            document.fonts.load(`700 46px ${SERIF}`, Object.values(d).join('')),
+                            ...(labelLang === 'ja' ? [document.fonts.load(`900 35px ${JP_SERIF}`, '種親ライン名累代プリンカップ頭幅蛹化羽化')] : [])]); }catch(e){}
     draw(d);
     const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
     if(!blob) return alert('이미지를 만들지 못했어요. 다시 시도해 주세요.');
