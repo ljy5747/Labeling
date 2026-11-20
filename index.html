@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>국균연구소 라벨 메이커</title>
-<meta name="description" content="국균연구소 사슴벌레 사육 라벨을 입력하고 이미지로 저장합니다.">
+<title>Dorcus Lab 라벨 메이커</title>
+<meta name="description" content="Dorcus Lab 사슴벌레 사육 라벨을 입력하고 이미지로 저장합니다.">
 <meta name="theme-color" content="#111111">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,7 +131,7 @@
 </style>
 </head>
 <body>
-<header class="top"><h1>國菌研究所 라벨</h1><span>LABEL MAKER</span></header>
+<header class="top"><h1>Dorcus Lab 라벨</h1><span>LABEL MAKER</span></header>
 
 <main class="wrap">
   <section class="preview" id="preview">
@@ -248,7 +248,7 @@
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
   const tpl = new Image();
-  tpl.src = 'template.png';
+  tpl.src = 'template.png?v=dorcus-lab';
 
   const $ = id => document.getElementById(id);
   $('labelLang').value = labelLang;
